@@ -4,9 +4,6 @@ import "./utils/dateHelpers.js";
 import { createServer } from "./server.js";
 import { initMarketingCron } from "./utils/marketingCron.js";
 
-const DEFAULT_PORT = Number(process.env.PORT) || 5003;
-const isVercel = !!process.env.VERCEL;
-
 let appInstance;
 
 /**
@@ -14,40 +11,13 @@ let appInstance;
  */
 async function initApp() {
   if (!appInstance) {
-    // 1) Build app (connects DB inside createServer)
     appInstance = await createServer();
 
-    // 2) Initialize cron (⚠️ won't persist on Vercel)
+    // Cron jobs won’t persist on serverless
     try {
       initMarketingCron();
     } catch (e) {
       console.warn("⚠️ Cron skipped:", e?.message);
-    }
-
-    // 3) Optional seeding (set SEED=false in .env to skip)
-    try {
-      if (process.env.SEED !== "false") {
-        const mod = await import("./seed/performSeeding.js").catch(() => null);
-        if (mod?.performSeeding) {
-          await mod.performSeeding();
-          console.log("🌱 Seeding complete");
-        }
-      }
-    } catch (e) {
-      console.error("Seeding failed:", e?.message || e);
-    }
-
-    // 4) Verify admin user exists
-    try {
-      const { default: User } = await import("./models/User.js");
-      const admin = await User.findOne({ email: "admin@eventx.dev" });
-      if (admin) {
-        console.log("👤 Admin user verified in database");
-      } else {
-        console.warn("⚠️ Admin user not found in database!");
-      }
-    } catch (e) {
-      console.error("Admin verification failed:", e?.message || e);
     }
   }
 
@@ -57,15 +27,16 @@ async function initApp() {
 /**
  * Local development mode
  */
-if (!isVercel) {
+if (!process.env.VERCEL) {
   initApp().then((app) => {
-    app.listen(DEFAULT_PORT, () => {
+    const PORT = process.env.PORT || 5003;
+    app.listen(PORT, () => {
       const clientOrigins =
         (process.env.CLIENT_URL || "http://localhost:5173")
           .split(",")
           .map((s) => s.trim())
           .join(", ");
-      console.log(`✅ EventX API running on http://localhost:${DEFAULT_PORT}`);
+      console.log(`✅ EventX API running on http://localhost:${PORT}`);
       console.log(`🔓 CORS enabled for: ${clientOrigins}`);
     });
   });
@@ -76,5 +47,5 @@ if (!isVercel) {
  */
 export default async function handler(req, res) {
   const app = await initApp();
-  return app(req, res);
+  return app(req, res); // This is what Vercel calls
 }
