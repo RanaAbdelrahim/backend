@@ -1,4 +1,5 @@
 // src/index.js
+//redeploy fix
 import "dotenv/config";
 import { createServer } from "./server.js";
 import { initMarketingCron } from "./utils/marketingCron.js";
