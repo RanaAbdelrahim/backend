@@ -5,13 +5,13 @@ import { initMarketingCron } from "./utils/marketingCron.js";
 import serverless from "serverless-http";
 
 let appInstance;
-let handler; // Will hold the wrapped serverless handler
+let handler; // wrap once for Vercel
 
 async function initApp() {
   if (!appInstance) {
     appInstance = await createServer();
 
-    // Cron jobs won't persist on Vercel
+    // Cron jobs won't persist on serverless
     try {
       initMarketingCron();
     } catch (e) {
@@ -26,12 +26,18 @@ if (!process.env.VERCEL) {
   initApp().then((app) => {
     const PORT = process.env.PORT || 5003;
     app.listen(PORT, () => {
+      const clientOrigins =
+        (process.env.CLIENT_URL || "http://localhost:5173")
+          .split(",")
+          .map((s) => s.trim())
+          .join(", ");
       console.log(`✅ EventX API running on http://localhost:${PORT}`);
+      console.log(`🔓 CORS enabled for: ${clientOrigins}`);
     });
   });
 }
 
-// ✅ Vercel serverless handler
+// Vercel serverless handler
 export default async function handlerVercel(req, res) {
   if (!handler) {
     const app = await initApp();
