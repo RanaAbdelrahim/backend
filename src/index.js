@@ -1,15 +1,17 @@
 import "dotenv/config";
+import "./utils/dateHelpers.js";
 import { createServer } from "./server.js";
 import { initMarketingCron } from "./utils/marketingCron.js";
 import serverless from "serverless-http";
 
 let appInstance;
+let handler; // wrap once for Vercel
 
 async function initApp() {
   if (!appInstance) {
     appInstance = await createServer();
 
-    // Cron jobs won't persist on Vercel
+    // Cron jobs won't persist on serverless
     try {
       initMarketingCron();
     } catch (e) {
@@ -35,9 +37,8 @@ if (!process.env.VERCEL) {
   });
 }
 
-// Vercel serverless handler — wrap app only once
-let handler;
-export default async function vercelHandler(req, res) {
+// Vercel serverless handler
+export default async function handler(req, res) {
   if (!handler) {
     const app = await initApp();
     handler = serverless(app); // wrap app only once
